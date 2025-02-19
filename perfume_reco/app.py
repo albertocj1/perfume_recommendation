@@ -2,25 +2,24 @@ import streamlit as st
 import pandas as pd
 import joblib
 import os
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 # Define paths to the model
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.abspath(os.path.join(BASE_DIR, "../models/model_kmeans_k7_metric0.03_date20250219.pkl"))
 
 def load_model():
-    return joblib.load(MODEL_PATH)
+    model_data = joblib.load(MODEL_PATH)
+    return model_data['vectorizer'], model_data['kmeans']
 
-# Load model
-kmeans = load_model()
+# Load model components
+vectorizer, kmeans = load_model()
 
 # Load perfume dataset
 df = pd.read_csv(os.path.abspath(os.path.join(BASE_DIR, "../data/raw/final_perfume_data.csv")), encoding='ISO-8859-1')
 df["Notes"].fillna("", inplace=True)
 
 # Convert Notes column to numerical representation
-vectorizer = TfidfVectorizer(stop_words="english")
-X = vectorizer.fit_transform(df["Notes"])
+X = vectorizer.transform(df["Notes"])
 
 # Assign clusters
 df["Cluster"] = kmeans.predict(X)
