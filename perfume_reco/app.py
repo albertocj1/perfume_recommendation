@@ -14,7 +14,7 @@ def load_model():
 kmeans = load_model()
 
 # Load perfume dataset
-df = pd.read_csv(os.path.abspath(os.path.join(BASE_DIR, "../data/perfume_data.csv")))
+df = pd.read_csv(os.path.abspath(os.path.join(BASE_DIR, "../data/raw/final_perfume_data.csv")))
 df["Notes"].fillna("", inplace=True)
 
 # Assign clusters (assuming X is precomputed and stored in the dataset)
