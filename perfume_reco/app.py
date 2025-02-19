@@ -41,7 +41,7 @@ def main():
     
     model = load_model()
     perfume_df = load_data()
-    perfume_names = perfume_df['name'].tolist()
+    perfume_names = perfume_df['Name'].tolist()
     
     user_input = st.text_input("Enter a perfume you like:")
     
