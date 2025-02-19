@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import joblib
 import os
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 # Define paths to the model
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -17,8 +18,12 @@ kmeans = load_model()
 df = pd.read_csv(os.path.abspath(os.path.join(BASE_DIR, "../data/raw/final_perfume_data.csv")), encoding='ISO-8859-1')
 df["Notes"].fillna("", inplace=True)
 
-# Assign clusters (assuming X is precomputed and stored in the dataset)
-df["Cluster"] = kmeans.predict(df["Notes"])
+# Convert Notes column to numerical representation
+vectorizer = TfidfVectorizer(stop_words="english")
+X = vectorizer.fit_transform(df["Notes"])
+
+# Assign clusters
+df["Cluster"] = kmeans.predict(X)
 
 def recommend_perfumes(selected_perfume):
     if selected_perfume not in df["Name"].values:
