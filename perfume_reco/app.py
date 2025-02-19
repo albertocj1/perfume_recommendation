@@ -47,9 +47,18 @@ def main():
     
     selected_perfume = st.selectbox("Select a perfume:", df["Name"].unique())
     
+    if selected_perfume:
+        perfume_details = df[df["Name"] == selected_perfume].iloc[0]
+        st.subheader("Selected Perfume Details")
+        st.image(perfume_details["Image URL"], width=150)
+        st.write(f"**{perfume_details['Name']}** by {perfume_details['Brand']}")
+        st.write(f"Notes: {perfume_details['Notes']}")
+        st.write("---")
+    
     if st.button("Recommend"):
         recommendations = recommend_perfumes(selected_perfume)
         if not recommendations.empty:
+            st.subheader("Recommended Perfumes")
             for _, row in recommendations.iterrows():
                 st.image(row["Image URL"], width=100)
                 st.write(f"**{row['Name']}** by {row['Brand']}")
