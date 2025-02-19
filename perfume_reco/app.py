@@ -1,23 +1,29 @@
+import os
 import streamlit as st
 import pandas as pd
 import joblib
-import os
-from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import process
 
-# Set up paths
+# Define file paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "../models/model_kmeans_k7_metric0.03_date20250219.pkl")
 DATA_PATH = os.path.join(BASE_DIR, "../data/raw/final_perfume_data.csv")
 
-# Load the trained model and perfume dataset
+# Load the trained KMeans model
 @st.cache_resource
 def load_model():
     return joblib.load(MODEL_PATH)
 
+# Load the dataset
 @st.cache_data
 def load_data():
-    return pd.read_csv(DATA_PATH, encoding='ISO-8859-1')
+    df = pd.read_csv(DATA_PATH, encoding='ISO-8859-1')
+    
+    # Ensure the dataset has a "Cluster" column
+    if "Cluster" not in df.columns:
+        raise ValueError("Error: The dataset must contain precomputed cluster labels!")
+    
+    return df
 
 # Function to find the closest perfume name
 def get_closest_perfume(user_input, perfume_names):
@@ -25,47 +31,39 @@ def get_closest_perfume(user_input, perfume_names):
     return match if score > 70 else None  # Accept matches with >70% similarity
 
 # Function to recommend perfumes based on cluster similarity
-def recommend_perfume(model, user_perfume, perfume_df):
-    perfume_idx = perfume_df[perfume_df['Name'] == user_perfume].index
+def recommend_perfume(user_perfume, perfume_df):
+    # Find the cluster of the selected perfume
+    perfume_info = perfume_df[perfume_df['Name'] == user_perfume]
     
-    if perfume_idx.empty:
+    if perfume_info.empty:
         return []
     
-    # Extract only numerical feature columns
-    feature_columns = [col for col in perfume_df.columns if col not in ['Name', 'Brand', 'Description', 'Notes', 'Image URL']]
+    user_cluster = perfume_info["Cluster"].values[0]
     
-    if not feature_columns:
-        raise ValueError("No numerical feature columns found in dataset!")
-
-    # Extract user perfume features
-    user_features = perfume_df.loc[perfume_idx, feature_columns]
+    # Find other perfumes in the same cluster
+    similar_perfumes = perfume_df[perfume_df["Cluster"] == user_cluster]["Name"].tolist()
     
-    # Predict cluster
-    user_cluster = model.predict(user_features)  
-    
-    # Find perfumes in the same cluster
-    similar_perfumes = perfume_df[model.labels_ == user_cluster[0]]['Name'].tolist()
-    
-    return [p for p in similar_perfumes if p != user_perfume][:5]  # Return top 5 recommendations
-
+    return [p for p in similar_perfumes if p != user_perfume][:5]  # Return top 5
 
 # Streamlit UI
 def main():
     st.title("Perfume Recommendation System")
     st.write("Find perfumes similar to your favorite scent based on fragrance clusters!")
-    
+
+    # Load model and data
     model = load_model()
     perfume_df = load_data()
     perfume_names = perfume_df['Name'].tolist()
-    
+
     user_input = st.text_input("Enter a perfume you like:")
-    
+
     if st.button("Find Similar Perfumes"):
         closest_perfume = get_closest_perfume(user_input, perfume_names)
-        
+
         if closest_perfume:
             st.write(f"Closest match found: **{closest_perfume}**")
-            recommendations = recommend_perfume(model, closest_perfume, perfume_df)
+            recommendations = recommend_perfume(closest_perfume, perfume_df)
+
             if recommendations:
                 st.subheader("Recommended Perfumes:")
                 for perfume in recommendations:
