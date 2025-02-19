@@ -26,13 +26,14 @@ def get_closest_perfume(user_input, perfume_names):
 
 # Function to recommend perfumes based on cluster similarity
 def recommend_perfume(model, user_perfume, perfume_df):
-    perfume_idx = perfume_df[perfume_df['Perfume Name'] == user_perfume].index
+    perfume_idx = perfume_df[perfume_df['Name'] == user_perfume].index
     if perfume_idx.empty:
         return []
     
-    user_cluster = model.predict(perfume_df.iloc[perfume_idx, 1:])  # Exclude name column
-    similar_perfumes = perfume_df[model.labels_ == user_cluster[0]]['Perfume Name'].tolist()
-    return [p for p in similar_perfumes if p != user_perfume][:5]  # Return top 5 similar
+    user_cluster = model.predict(perfume_df.iloc[perfume_idx, 1:])  # Exclude Name column
+    similar_perfumes = perfume_df[model.labels_ == user_cluster[0]]['Name'].tolist()
+    
+    return [p for p in similar_perfumes if p != user_perfume][:5]  # Return top 5 similar perfumes
 
 # Streamlit UI
 def main():
