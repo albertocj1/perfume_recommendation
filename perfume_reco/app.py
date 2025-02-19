@@ -5,7 +5,7 @@ import os
 
 # Define paths to the model
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.abspath(os.path.join(BASE_DIR, "../models/model_kmeans_k7_metric0.03_date20250217.pkl"))
+MODEL_PATH = os.path.abspath(os.path.join(BASE_DIR, "../models/kmeans_model.pkl"))
 
 def load_model():
     return joblib.load(MODEL_PATH)
@@ -14,7 +14,7 @@ def load_model():
 kmeans = load_model()
 
 # Load perfume dataset
-df = pd.read_csv(os.path.abspath(os.path.join(BASE_DIR, "../data/raw/final_perfume_data.csv")))
+df = pd.read_csv(os.path.abspath(os.path.join(BASE_DIR, "../data/raw/final_perfume_data.csv")), encoding='ISO-8859-1')
 df["Notes"].fillna("", inplace=True)
 
 # Assign clusters (assuming X is precomputed and stored in the dataset)
