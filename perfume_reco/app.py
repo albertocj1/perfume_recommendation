@@ -1,60 +1,58 @@
 import streamlit as st
 import pandas as pd
-import joblib  
-import os
+import joblib
+from sklearn.metrics.pairwise import cosine_similarity
+from fuzzywuzzy import process
 
-# Define path for the trained model
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.abspath(os.path.join(BASE_DIR, "../models/model_kmeans_k7_metric0.03_date20250219.pkl"))
-
-# Load the trained model
+# Load the trained model and perfume dataset
+@st.cache_resource
 def load_model():
-    return joblib.load(MODEL_PATH)
+    return joblib.load("../models/perfume_recommender.pkl")
 
-# Main function for the Streamlit app
-def main():
-    st.title("Perfume Recommendation App")
+@st.cache_data
+def load_data():
+    return pd.read_csv("../data/perfume_dataset.csv")
+
+# Function to find the closest perfume name
+def get_closest_perfume(user_input, perfume_names):
+    match, score = process.extractOne(user_input, perfume_names)
+    return match if score > 70 else None  # Accept matches with >70% similarity
+
+# Function to recommend perfumes based on cluster similarity
+def recommend_perfume(model, user_perfume, perfume_df):
+    perfume_idx = perfume_df[perfume_df['Perfume Name'] == user_perfume].index
+    if perfume_idx.empty:
+        return []
     
-    st.write("""
-    This app recommends perfumes based on your scent preferences.  
-    Adjust the sliders to describe your ideal fragrance, and get recommendations!
-    """)
+    user_cluster = model.predict(perfume_df.iloc[perfume_idx, 1:])  # Exclude name column
+    similar_perfumes = perfume_df[model.labels_ == user_cluster[0]]['Perfume Name'].tolist()
+    return [p for p in similar_perfumes if p != user_perfume][:5]  # Return top 5 similar
 
-    # User input section for fragrance preferences
-    floral = st.slider("Floral (0-10)", 0, 10, 5)
-    woody = st.slider("Woody (0-10)", 0, 10, 5)
-    citrus = st.slider("Citrus (0-10)", 0, 10, 5)
-    spicy = st.slider("Spicy (0-10)", 0, 10, 5)
-    musky = st.slider("Musky (0-10)", 0, 10, 5)
-    fresh = st.slider("Fresh (0-10)", 0, 10, 5)
-    sweet = st.slider("Sweet (0-10)", 0, 10, 5)
-
-    # Convert user input to model input format
-    user_input = pd.DataFrame([{
-        'floral': floral,
-        'woody': woody,
-        'citrus': citrus,
-        'spicy': spicy,
-        'musky': musky,
-        'fresh': fresh,
-        'sweet': sweet
-    }])
-
-    def recommend_perfume(model, user_data):
-        # Get predictions from the model
-        recommendations = model.predict(user_data)
-        return recommendations
-
-    # Load the model
+# Streamlit UI
+def main():
+    st.title("Perfume Recommendation System")
+    st.write("Find perfumes similar to your favorite scent based on fragrance clusters!")
+    
     model = load_model()
-
-    if st.button("Get Recommendation"):
-        print(user_input)
-        recommendations = recommend_perfume(model, user_input)
-        print(recommendations)
-
-        st.subheader("Recommended Perfume(s):")
-        st.write(", ".join(recommendations))
+    perfume_df = load_data()
+    perfume_names = perfume_df['Perfume Name'].tolist()
+    
+    user_input = st.text_input("Enter a perfume you like:")
+    
+    if st.button("Find Similar Perfumes"):
+        closest_perfume = get_closest_perfume(user_input, perfume_names)
+        
+        if closest_perfume:
+            st.write(f"Closest match found: **{closest_perfume}**")
+            recommendations = recommend_perfume(model, closest_perfume, perfume_df)
+            if recommendations:
+                st.subheader("Recommended Perfumes:")
+                for perfume in recommendations:
+                    st.write(f"- {perfume}")
+            else:
+                st.write("No close matches found in the dataset.")
+        else:
+            st.write("No similar perfume found. Try another name!")
 
 if __name__ == "__main__":
     main()

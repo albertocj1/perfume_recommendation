@@ -8,3 +8,4 @@ optuna
 hyperopt
 ipykernel
 chardet
+fuzzywuzzy
