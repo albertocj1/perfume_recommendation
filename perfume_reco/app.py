@@ -11,10 +11,37 @@ MODEL_PATH = os.path.join(BASE_DIR, "../models/model_kmeans_k7_metric0.03_date20
 DATA_PATH = os.path.join(BASE_DIR, "../data/raw/final_perfume_data.csv")
 
 # Load the trained model
+@st.cache_resource
 def load_model():
     return joblib.load(MODEL_PATH)
 
-# Main function for the Streamlit app
+# Load perfume data
+@st.cache_data
+def load_data():
+    return pd.read_csv(DATA_PATH)
+
+# Function to recommend perfumes
+def recommend_perfumes(model, data, user_input):
+    # Get the cluster of user input
+    cluster = model.predict(user_input)[0]
+    
+    # Filter perfumes in the same cluster
+    cluster_perfumes = data[data['Cluster'] == cluster]
+    
+    # Compute similarity scores
+    notes_matrix = cluster_perfumes['notes'].apply(lambda x: x.split())  # Convert to lists
+    notes_matrix = notes_matrix.apply(lambda x: ' '.join(x))  # Convert back to strings for vectorization
+    vectorized_notes = cluster_perfumes['notes'].str.get_dummies(sep=' ')  # One-hot encode notes
+    
+    user_vector = user_input.dot(vectorized_notes.T)  # Compute similarity
+    cluster_perfumes['Similarity'] = cosine_similarity(user_vector, vectorized_notes)[0]
+    
+    # Sort by highest similarity
+    recommendations = cluster_perfumes.sort_values(by="Similarity", ascending=False).head(5)
+    
+    return recommendations[['name', 'brand', 'notes', 'Similarity']]
+
+# Streamlit UI
 def main():
     st.title("Perfume Recommendation App")
     
@@ -43,21 +70,15 @@ def main():
         'sweet': sweet
     }])
 
-    def recommend_perfume(model, user_data):
-        # Get predictions from the model
-        recommendations = model.predict(user_data)
-        return recommendations
-
-    # Load the model
+    # Load model and data
     model = load_model()
+    data = load_data()
 
     if st.button("Get Recommendation"):
-        print(user_input)
-        recommendations = recommend_perfume(model, user_input)
-        print(recommendations)
-
+        recommendations = recommend_perfumes(model, data, user_input)
+        
         st.subheader("Recommended Perfume(s):")
-        st.write(", ".join(recommendations))
+        st.dataframe(recommendations)
 
 if __name__ == "__main__":
     main()
