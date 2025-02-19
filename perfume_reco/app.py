@@ -1,17 +1,23 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import os
 from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import process
+
+# Set up paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "../models/model_kmeans_k7_metric0.03_date20250219.pkl")
+DATA_PATH = os.path.join(BASE_DIR, "../data/raw/final_perfume_data.csv")
 
 # Load the trained model and perfume dataset
 @st.cache_resource
 def load_model():
-    return joblib.load("../models/model_kmeans_k7_metric0.03_date20250219.pkl")
+    return joblib.load(MODEL_PATH)
 
 @st.cache_data
 def load_data():
-    return pd.read_csv('../data/raw/final_perfume_data.csv', encoding='ISO-8859-1')
+    return pd.read_csv(DATA_PATH, encoding='ISO-8859-1')
 
 # Function to find the closest perfume name
 def get_closest_perfume(user_input, perfume_names):
