@@ -1,0 +1,10 @@
+pandas
+numpy
+scikit-learn
+matplotlib
+streamlit
+seaborn
+optuna
+hyperopt
+ipykernel
+chardet
