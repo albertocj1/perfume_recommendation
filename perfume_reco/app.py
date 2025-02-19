@@ -5,7 +5,7 @@ import os
 
 # Define path for the trained model
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.abspath(os.path.join(BASE_DIR, "models\model_kmeans_k7_metric0.03_date20250219.pkl"))
+MODEL_PATH = os.path.abspath(os.path.join(BASE_DIR, "../models/model_kmeans_k7_metric0.03_date20250219.pkl"))
 
 # Load the trained model
 def load_model():
