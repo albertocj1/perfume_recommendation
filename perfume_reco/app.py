@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import joblib
 import os
+from sklearn.metrics.pairwise import cosine_similarity
 
 # Define paths to the model
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -30,7 +31,14 @@ def recommend_perfumes(selected_perfume):
     
     cluster = df[df["Name"] == selected_perfume]["Cluster"].values[0]
     cluster_perfumes = df[df["Cluster"] == cluster]
-    recommendations = cluster_perfumes[cluster_perfumes["Name"] != selected_perfume]
+    
+    selected_vector = vectorizer.transform(df[df["Name"] == selected_perfume]["Notes"])
+    cluster_vectors = vectorizer.transform(cluster_perfumes["Notes"])
+    
+    similarities = cosine_similarity(selected_vector, cluster_vectors)[0]
+    cluster_perfumes = cluster_perfumes.assign(Similarity=similarities)
+    
+    recommendations = cluster_perfumes[cluster_perfumes["Name"] != selected_perfume].sort_values(by="Similarity", ascending=False)
     
     return recommendations.head(5)
 
@@ -46,6 +54,7 @@ def main():
                 st.image(row["Image URL"], width=100)
                 st.write(f"**{row['Name']}** by {row['Brand']}")
                 st.write(f"Notes: {row['Notes']}")
+                st.write(f"Similarity: {row['Similarity']:.2%}")
                 st.write("---")
         else:
             st.write("No recommendations found.")
