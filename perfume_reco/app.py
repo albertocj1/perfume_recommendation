@@ -7,11 +7,11 @@ from fuzzywuzzy import process
 # Load the trained model and perfume dataset
 @st.cache_resource
 def load_model():
-    return joblib.load("../models/perfume_recommender.pkl")
+    return joblib.load("../models/model_kmeans_k7_metric0.03_date20250219.pkl")
 
 @st.cache_data
 def load_data():
-    return pd.read_csv("../data/perfume_dataset.csv")
+    return pd.read_csv('../data/raw/final_perfume_data.csv', encoding='ISO-8859-1')
 
 # Function to find the closest perfume name
 def get_closest_perfume(user_input, perfume_names):
