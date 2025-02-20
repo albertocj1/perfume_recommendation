@@ -25,6 +25,19 @@ X = vectorizer.transform(df["Notes"])
 # Assign clusters
 df["Cluster"] = kmeans.predict(X)
 
+# Cluster interpretation
+def get_cluster_description(cluster_id):
+    cluster_descriptions = {
+        0: "Fresh & Floral Woody Musk",
+        1: "Oriental & Spicy Woody",
+        2: "Earthy & Citrus Woody",
+        3: "Smoky & Resinous Oriental",
+        4: "Fruity Floral Musk",
+        5: "Classic Green & Woody Floral",
+        6: "Creamy Floral & Sweet Woody"
+    }
+    return cluster_descriptions.get(cluster_id, "Unknown Cluster")
+
 def recommend_perfumes(selected_perfume):
     if selected_perfume not in df["Name"].values:
         return []
@@ -49,11 +62,13 @@ def main():
     
     if selected_perfume:
         perfume_details = df[df["Name"] == selected_perfume].iloc[0]
+        cluster_desc = get_cluster_description(perfume_details["Cluster"])
+        
         st.subheader("Selected Perfume Details")
         st.image(perfume_details["Image URL"], width=150)
         st.write(f"**{perfume_details['Name']}** by {perfume_details['Brand']}")
         st.write(f"Notes: {perfume_details['Notes']}")
-        st.write(f"Cluster: {perfume_details['Cluster']}")
+        st.write(f"Cluster: {perfume_details['Cluster']} ({cluster_desc})")
         st.write("---")
     
     if st.button("Recommend"):
@@ -61,14 +76,47 @@ def main():
         if not recommendations.empty:
             st.subheader("Recommended Perfumes")
             for _, row in recommendations.iterrows():
+                cluster_desc = get_cluster_description(row["Cluster"])
                 st.image(row["Image URL"], width=100)
                 st.write(f"**{row['Name']}** by {row['Brand']}")
                 st.write(f"Notes: {row['Notes']}")
-                st.write(f"Cluster: {row['Cluster']}")
+                st.write(f"Cluster: {row['Cluster']} ({cluster_desc})")
                 st.write(f"Similarity: {row['Similarity']:.2%}")
                 st.write("---")
         else:
             st.write("No recommendations found.")
-
+    
+    st.subheader("Cluster Analysis & Interpretation")
+    st.write("## **Cluster Interpretations:**")
+    st.markdown("""
+    - **Cluster 0: Fresh & Floral Woody Musk**  
+      - **Dominant Notes:** Musk, Amber, Bergamot, Rose, Jasmine, Sandalwood
+      - **Likely Represents:** Soft, warm, and slightly powdery scents with a floral-woody balance.
+    
+    - **Cluster 1: Oriental & Spicy Woody**  
+      - **Dominant Notes:** Patchouli, Saffron, Oud, Amber, Leather, Cardamom  
+      - **Likely Represents:** Deep, rich, and exotic fragrances, often found in Middle Eastern perfumery.
+    
+    - **Cluster 2: Earthy & Citrus Woody**  
+      - **Dominant Notes:** Cedarwood, Vetiver, Bergamot, Nutmeg, Grapefruit  
+      - **Likely Represents:** Fresh, woody, and slightly spicy colognes, often masculine and grounding.
+    
+    - **Cluster 3: Smoky & Resinous Oriental**  
+      - **Dominant Notes:** Incense, Patchouli, Amber, Leather, Vetiver, Vanilla  
+      - **Likely Represents:** Dark, resinous, smoky fragrances, ideal for colder seasons.
+    
+    - **Cluster 4: Fruity Floral Musk**  
+      - **Dominant Notes:** Peony, Lychee, Musk, Vanilla, Rose, Freesia  
+      - **Likely Represents:** Playful, sweet, and airy fragrances, often in feminine scents.
+    
+    - **Cluster 5: Classic Green & Woody Floral**  
+      - **Dominant Notes:** Vetiver, Jasmine, Cedar, Oakmoss, Lemon, Iris  
+      - **Likely Represents:** Earthy, natural, and vintage-style perfumes with chypre elements.
+    
+    - **Cluster 6: Creamy Floral & Sweet Woody**  
+      - **Dominant Notes:** Vanilla, Sandalwood, Jasmine, Patchouli, Tuberose  
+      - **Likely Represents:** Smooth, sweet, and seductive scents with floral-woody warmth.
+    """)
+    
 if __name__ == "__main__":
     main()
