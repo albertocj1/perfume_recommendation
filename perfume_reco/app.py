@@ -53,6 +53,7 @@ def main():
         st.image(perfume_details["Image URL"], width=150)
         st.write(f"**{perfume_details['Name']}** by {perfume_details['Brand']}")
         st.write(f"Notes: {perfume_details['Notes']}")
+        st.write(f"Cluster: {perfume_details['Cluster']}")
         st.write("---")
     
     if st.button("Recommend"):
@@ -63,6 +64,7 @@ def main():
                 st.image(row["Image URL"], width=100)
                 st.write(f"**{row['Name']}** by {row['Brand']}")
                 st.write(f"Notes: {row['Notes']}")
+                st.write(f"Cluster: {row['Cluster']}")
                 st.write(f"Similarity: {row['Similarity']:.2%}")
                 st.write("---")
         else:
