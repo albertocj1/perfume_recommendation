@@ -1,122 +1,135 @@
 import streamlit as st
-import pandas as pd
-import joblib
+import torch
+import torch.nn as nn
+from PIL import Image
+import torchvision.transforms as transforms
+import numpy as np
 import os
-from sklearn.metrics.pairwise import cosine_similarity
+import random
+import matplotlib.pyplot as plt
 
-# Define paths to the model
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.abspath(os.path.join(BASE_DIR, "../models/model_kmeans_k7_metric0.03_date20250219.pkl"))
+# Define the SiameseNetwork class (same as in your Colab notebook)
+class SiameseNetwork(nn.Module):
+    def __init__(self):
+        super(SiameseNetwork, self).__init__()
 
-def load_model():
-    model_data = joblib.load(MODEL_PATH)
-    return model_data['vectorizer'], model_data['kmeans']
+        self.cnn1 = nn.Sequential(
+            nn.Conv2d(1, 20, kernel_size=9, stride=1, padding=4),
+            nn.ReLU(inplace=True),
+            nn.LocalResponseNorm(5, alpha=0.0001, beta=0.75, k=2),
+            nn.MaxPool2d(3, stride=2),
+            nn.Dropout2d(p=0.2),
 
-# Load model components
-vectorizer, kmeans = load_model()
+            nn.Conv2d(20, 40, kernel_size=7, stride=1, padding=3),
+            nn.ReLU(inplace=True),
+            nn.LocalResponseNorm(5, alpha=0.0001, beta=0.75, k=2),
+            nn.MaxPool2d(3, stride=2),
+            nn.Dropout2d(p=0.2),
 
-# Load perfume dataset
-df = pd.read_csv(os.path.abspath(os.path.join(BASE_DIR, "../data/raw/final_perfume_data.csv")), encoding='ISO-8859-1')
-df["Notes"].fillna("", inplace=True)
+            nn.Conv2d(40, 80, kernel_size=5, stride=1, padding=2),
+            nn.ReLU(inplace=True),
+            nn.LocalResponseNorm(5, alpha=0.0001, beta=0.75, k=2),
+            nn.MaxPool2d(3, stride=2),
+            nn.Dropout2d(p=0.2),
 
-# Convert Notes column to numerical representation
-X = vectorizer.transform(df["Notes"])
+            nn.Conv2d(80, 160, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.LocalResponseNorm(5, alpha=0.0001, beta=0.75, k=2),
+            nn.MaxPool2d(3, stride=2),
+            nn.AdaptiveAvgPool2d((4, 4)),
+            nn.Dropout2d(p=0.2),
+        )
 
-# Assign clusters
-df["Cluster"] = kmeans.predict(X)
+        self.fc1 = nn.Sequential(
+            nn.Linear(2560, 640),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.2),
 
-# Cluster interpretation
-def get_cluster_description(cluster_id):
-    cluster_descriptions = {
-        0: "Fresh & Floral Woody Musk",
-        1: "Oriental & Spicy Woody",
-        2: "Earthy & Citrus Woody",
-        3: "Smoky & Resinous Oriental",
-        4: "Fruity Floral Musk",
-        5: "Classic Green & Woody Floral",
-        6: "Creamy Floral & Sweet Woody"
-    }
-    return cluster_descriptions.get(cluster_id, "Unknown Cluster")
+            nn.Linear(640, 160),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.2),
 
-def recommend_perfumes(selected_perfume):
-    if selected_perfume not in df["Name"].values:
-        return []
-    
-    cluster = df[df["Name"] == selected_perfume]["Cluster"].values[0]
-    cluster_perfumes = df[df["Cluster"] == cluster]
-    
-    selected_vector = vectorizer.transform(df[df["Name"] == selected_perfume]["Notes"])
-    cluster_vectors = vectorizer.transform(cluster_perfumes["Notes"])
-    
-    similarities = cosine_similarity(selected_vector, cluster_vectors)[0]
-    cluster_perfumes = cluster_perfumes.assign(Similarity=similarities)
-    
-    recommendations = cluster_perfumes[cluster_perfumes["Name"] != selected_perfume].sort_values(by="Similarity", ascending=False)
-    
-    return recommendations.head(5)
+            nn.Linear(160,40),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.2),
 
-def main():
-    st.title("Perfume Recommendation System")
-    
-    selected_perfume = st.selectbox("Select a perfume:", df["Name"].unique())
-    
-    if selected_perfume:
-        perfume_details = df[df["Name"] == selected_perfume].iloc[0]
-        cluster_desc = get_cluster_description(perfume_details["Cluster"])
-        
-        st.subheader("Selected Perfume Details")
-        st.image(perfume_details["Image URL"], width=150)
-        st.write(f"**{perfume_details['Name']}** by {perfume_details['Brand']}")
-        st.write(f"Notes: {perfume_details['Notes']}")
-        st.write(f"Cluster: {perfume_details['Cluster']} ({cluster_desc})")
-        st.write("---")
-    
-    if st.button("Recommend"):
-        recommendations = recommend_perfumes(selected_perfume)
-        if not recommendations.empty:
-            st.subheader("Recommended Perfumes")
-            for _, row in recommendations.iterrows():
-                cluster_desc = get_cluster_description(row["Cluster"])
-                st.image(row["Image URL"], width=100)
-                st.write(f"**{row['Name']}** by {row['Brand']}")
-                st.write(f"Notes: {row['Notes']}")
-                st.write(f"Cluster: {row['Cluster']} ({cluster_desc})")
-                st.write(f"Similarity: {row['Similarity']:.2%}")
-                st.write("---")
-        else:
-            st.write("No recommendations found.")
-    
-    st.subheader("Cluster Analysis & Interpretation")
-    st.write("## **Cluster Interpretations:**")
-    st.markdown("""
-    - **Cluster 0: Fresh & Floral Woody Musk**  
-      - **Dominant Notes:** Musk, Amber, Bergamot, Rose, Jasmine, Sandalwood
-      - **Likely Represents:** Soft, warm, and slightly powdery scents with a floral-woody balance.
-    
-    - **Cluster 1: Oriental & Spicy Woody**  
-      - **Dominant Notes:** Patchouli, Saffron, Oud, Amber, Leather, Cardamom  
-      - **Likely Represents:** Deep, rich, and exotic fragrances, often found in Middle Eastern perfumery.
-    
-    - **Cluster 2: Earthy & Citrus Woody**  
-      - **Dominant Notes:** Cedarwood, Vetiver, Bergamot, Nutmeg, Grapefruit  
-      - **Likely Represents:** Fresh, woody, and slightly spicy colognes, often masculine and grounding.
-    
-    - **Cluster 3: Smoky & Resinous Oriental**  
-      - **Dominant Notes:** Incense, Patchouli, Amber, Leather, Vetiver, Vanilla  
-      - **Likely Represents:** Dark, resinous, smoky fragrances, ideal for colder seasons.
-    
-    - **Cluster 4: Fruity Floral Musk**  
-      - **Dominant Notes:** Peony, Lychee, Musk, Vanilla, Rose, Freesia  
-      - **Likely Represents:** Playful, sweet, and airy fragrances, often in feminine scents.
-    
-    - **Cluster 5: Classic Green & Woody Floral**  
-      - **Dominant Notes:** Vetiver, Jasmine, Cedar, Oakmoss, Lemon, Iris  
-      - **Likely Represents:** Earthy, natural, and vintage-style perfumes with chypre elements.
-    
-    - **Cluster 6: Creamy Floral & Sweet Woody**  
-      - **Dominant Notes:** Vanilla, Sandalwood, Jasmine, Patchouli, Tuberose  
-      - **Likely Represents:** Smooth, sweet, and seductive scents with floral-woody warmth.
-    """)
-    
-if __name__ == "__main__":
-    main()
+            nn.Linear(40,10)
+        )
+
+    def forward_once(self, x):
+        x = self.cnn1(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc1(x)
+        return x
+
+    def forward(self, input1, input2):
+        output1 = self.forward_once(input1)
+        output2 = self.forward_once(input2)
+        return output1, output2
+
+# Function to load the model
+@st.cache_resource
+def load_model(model_path):
+    model = SiameseNetwork()
+    # Load state dict from the saved file
+    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+    model.eval() # Set the model to evaluation mode
+    return model
+
+# Load the model (assuming 'best_model.pt' is in the same directory)
+model = load_model("models/best_model.pt")
+
+# Define the image transformation (same as in your Colab notebook)
+TARGET_SIZE = (270, 650)
+transform = transforms.Compose([
+    transforms.Grayscale(num_output_channels=1),
+    transforms.Resize(TARGET_SIZE),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5,), (0.5,))
+])
+
+# Function to preprocess and get embedding
+def get_embedding(image):
+    image = transform(image).unsqueeze(0) # Add batch dimension
+    with torch.no_grad():
+        embedding = model.forward_once(image)
+    return embedding
+
+# Streamlit app interface
+st.title("Signature Verification App")
+
+st.write("Upload two signature images to verify if they are from the same person.")
+
+uploaded_file1 = st.file_uploader("Choose the first signature image...", type=["png", "jpg", "jpeg", "tif"])
+uploaded_file2 = st.file_uploader("Choose the second signature image...", type=["png", "jpg", "jpeg", "tif"])
+
+# You can adjust this threshold based on your model's performance on validation/test data
+distance_threshold = st.slider("Select Distance Threshold for Verification", min_value=0.1, max_value=2.0, value=0.5, step=0.05)
+
+if uploaded_file1 is not None and uploaded_file2 is not None:
+    image1 = Image.open(uploaded_file1).convert("L") # Convert to grayscale
+    image2 = Image.open(uploaded_file2).convert("L") # Convert to grayscale
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.image(image1, caption="Image 1", use_column_width=True)
+    with col2:
+        st.image(image2, caption="Image 2", use_column_width=True)
+
+    st.subheader("Verification Result:")
+
+    # Get embeddings for both images
+    embedding1 = get_embedding(image1)
+    embedding2 = get_embedding(image2)
+
+    # Calculate Euclidean distance between the embeddings
+    euclidean_distance = torch.pairwise_distance(embedding1, embedding2).item()
+
+    st.write(f"Euclidean Distance: {euclidean_distance:.4f}")
+
+    # Compare the distance to the threshold
+    if euclidean_distance <= distance_threshold:
+        st.success("The signatures are likely GENUINE.")
+    else:
+        st.error("The signatures are likely FORGED.")

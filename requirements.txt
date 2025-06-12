@@ -9,3 +9,6 @@ hyperopt
 ipykernel
 chardet
 fuzzywuzzy
+torch
+torchvision
+Pillow

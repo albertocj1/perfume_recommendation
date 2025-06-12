@@ -18,6 +18,9 @@ hyperopt = "^0.2.7"
 ipykernel = "^6.29.5"
 chardet = "^5.2.0"
 fuzzywuzzy = "^0.18.0"
+torch = "^2.7.1"
+torchvision = "^0.22.1"
+pillow = "^11.2.1"
 
 
 [tool.poetry.group.dev.dependencies]
